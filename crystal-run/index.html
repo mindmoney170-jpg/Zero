@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crystal Run</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at top,#192b48,#080d18 65%);color:#eef6ff}
+main{width:min(94vw,760px);padding:22px;border:1px solid #344b70;border-radius:22px;background:#101a2b;box-shadow:0 20px 70px #0008}
+h1{margin:0;font-size:clamp(28px,5vw,42px);letter-spacing:.04em}
+p{color:#a9bdd9;margin:6px 0 16px}
+.hud{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.pill{padding:8px 13px;background:#1c2c45;border:1px solid #385477;border-radius:999px;font-weight:700}
+canvas{display:block;width:100%;height:auto;border-radius:14px;background:#0b1422;border:1px solid #304866;touch-action:none}
+.controls{display:flex;justify-content:center;gap:9px;margin:14px auto 8px;flex-wrap:wrap}
+button{border:1px solid #5578a7;border-radius:12px;padding:11px 16px;background:#203957;color:white;font-weight:700;cursor:pointer}
+button:active{transform:scale(.97);background:#31577f}
+#message{text-align:center;min-height:26px;color:#8fe8ff;font-weight:700}
+small{display:block;text-align:center;color:#8fa4c2}
+</style>
+</head>
+<body>
+<main>
+<h1>💎 CRYSTAL RUN</h1><p>Recoge 10 cristales. ¡No dejes que los drones te atrapen!</p>
+<div class="hud"><span class="pill" id="score">Cristales: 0 / 10</span><span class="pill" id="lives">Vidas: ♥ ♥ ♥</span><span class="pill">WASD / Flechas</span></div>
+<canvas id="game" width="700" height="420" aria-label="Zona de juego Crystal Run"></canvas>
+<div class="controls"><button data-dir="up">▲</button><button data-dir="left">◀</button><button data-dir="down">▼</button><button data-dir="right">▶</button><button id="restart">Reiniciar</button></div>
+<div id="message" aria-live="polite">¡Buena suerte!</div><small>En móvil puedes usar los botones. En ordenador, WASD o flechas.</small>
+</main>
+<script>
+(()=>{
+const c=document.querySelector('#game'),ctx=c.getContext('2d'),scoreEl=document.querySelector('#score'),livesEl=document.querySelector('#lives'),msg=document.querySelector('#message');
+const W=c.width,H=c.height,keys={};let player,crystal,drones,score,lives,ended,won,invuln,last=0;
+const rand=(a,b)=>Math.random()*(b-a)+a;
+function spot(){return{x:rand(30,W-30),y:rand(30,H-30)}}
+function reset(){player={x:W/2,y:H/2,r:13,speed:230};crystal=spot();drones=[{...spot(),r:17,vx:120,vy:95},{...spot(),r:15,vx:-105,vy:130}];score=0;lives=3;ended=false;won=false;invuln=0;msg.textContent='¡Buena suerte!';hud()}
+function hud(){scoreEl.textContent='Cristales: '+score+' / 10';livesEl.textContent='Vidas: '+('♥ '.repeat(lives)).trim()}
+function collide(a,b){return Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r}
+function update(dt){if(ended)return;let dx=(keys.right?1:0)-(keys.left?1:0),dy=(keys.down?1:0)-(keys.up?1:0),len=Math.hypot(dx,dy)||1;player.x=Math.max(player.r,Math.min(W-player.r,player.x+dx/len*player.speed*dt));player.y=Math.max(player.r,Math.min(H-player.r,player.y+dy/len*player.speed*dt));
+for(const d of drones){d.x+=d.vx*dt;d.y+=d.vy*dt;if(d.x<d.r||d.x>W-d.r)d.vx*=-1;if(d.y<d.r||d.y>H-d.r)d.vy*=-1;if(invuln<=0&&collide(player,d)){lives--;invuln=1.2;hud();if(lives<=0){ended=true;msg.textContent='Fin de la partida. ¡Inténtalo otra vez!';}}}
+invuln=Math.max(0,invuln-dt);if(collide(player,{...crystal,r:10})){score++;crystal=spot();hud();if(score>=10){ended=true;won=true;msg.textContent='¡VICTORIA! Has reunido los 10 cristales. ✨';}}
+}
+function draw(){ctx.clearRect(0,0,W,H);ctx.strokeStyle='#172a43';ctx.lineWidth=1;for(let x=0;x<W;x+=35){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=35){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ctx.save();ctx.shadowBlur=22;ctx.shadowColor='#53e8ff';ctx.fillStyle='#67eaff';ctx.translate(crystal.x,crystal.y);ctx.rotate(Math.PI/4);ctx.fillRect(-9,-9,18,18);ctx.restore();
+for(const d of drones){ctx.beginPath();ctx.fillStyle='#ff637d';ctx.shadowBlur=16;ctx.shadowColor='#ff4567';ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#381321';ctx.fillRect(d.x-7,d.y-3,4,4);ctx.fillRect(d.x+3,d.y-3,4,4)}
+ctx.beginPath();ctx.fillStyle=invuln>0&&Math.floor(performance.now()/90)%2?'#ffffff55':'#a98bff';ctx.shadowBlur=20;ctx.shadowColor='#9b78ff';ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(player.x-4,player.y-3,2,0,Math.PI*2);ctx.arc(player.x+4,player.y-3,2,0,Math.PI*2);ctx.fill();
+if(ended){ctx.fillStyle='#07101dcc';ctx.fillRect(0,0,W,H);ctx.fillStyle=won?'#8fffd0':'#ff9aaa';ctx.font='bold 34px system-ui';ctx.textAlign='center';ctx.fillText(won?'¡VICTORIA!':'GAME OVER',W/2,H/2);ctx.font='16px system-ui';ctx.fillStyle='#fff';ctx.fillText('Pulsa Reiniciar para jugar de nuevo',W/2,H/2+32)}}
+function frame(t){const dt=Math.min((t-last)/1000||0,.04);last=t;update(dt);draw();requestAnimationFrame(frame)}
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase(),map={arrowup:'up',w:'up',arrowdown:'down',s:'down',arrowleft:'left',a:'left',arrowright:'right',d:'right'};if(map[k]){keys[map[k]]=true;e.preventDefault()}});window.addEventListener('keyup',e=>{const k=e.key.toLowerCase(),map={arrowup:'up',w:'up',arrowdown:'down',s:'down',arrowleft:'left',a:'left',arrowright:'right',d:'right'};if(map[k])keys[map[k]]=false});
+document.querySelectorAll('[data-dir]').forEach(b=>{const k=b.dataset.dir;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true});['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false))});document.querySelector('#restart').addEventListener('click',reset);reset();requestAnimationFrame(frame);
+})();
+</script>
+</body></html>
